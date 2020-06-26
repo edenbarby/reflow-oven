@@ -4,7 +4,9 @@
 #include "system.h"
 
 
-uint32_t system_hclk = 0;
+extern uint32_t system_hclk;
+extern uint32_t system_pclk1;
+extern uint32_t system_pclk2;
 uint32_t system_tick = 0;
 uint32_t system_tick_factor_us = 1;
 
@@ -61,7 +63,9 @@ void system_clock_init_pll_hse_72(void) {
     LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
     while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL);
 
-    system_hclk = 72000000;
+    system_hclk = 72000000UL;
+    system_pclk1 = 36000000UL;
+    system_pclk2 = 72000000UL;
 }
 
 void system_time_init(void) {

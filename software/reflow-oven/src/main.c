@@ -4,15 +4,20 @@
 #include "stm32f3xx_ll_utils.h"
 #include "lcd.h"
 #include "system.h"
+#include "usart2.h"
 
 
 int main(void) {
+    uint8_t update = 0;
+    uint32_t i = 0;
+    uint8_t buf[70];
     uint64_t current, last_led;
     LL_GPIO_InitTypeDef init_struct_gpio;
 
     system_clock_init_pll_hse_72();
     system_time_init();
     lcd_init();
+    usart2_init();
 
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
     LL_GPIO_StructInit(&init_struct_gpio);
@@ -31,13 +36,23 @@ int main(void) {
             last_led = current;
             LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
 
-            lcd_clear();
-            lcd_print("test123", 7);
-            lcd_update();
-            // spi2_transceive_n(data, 3);
+            if(update) {
+                lcd_clear();
+                lcd_print(buf, i);
+                lcd_update();
+                update = 0;
+                i = 0;
+            }
         }
-        // __HAL_SPI_ENABLE(&spi_handle);
-        // HAL_SPI_TransmitReceive(&spi_handle, data, data, 3, 1000);
-        // __HAL_SPI_DISABLE(&spi_handle);
+
+        if(usart2_getc(&(buf[i]))) {
+            usart2_putc(buf[i]);
+
+            if(buf[i] < ' ') {
+                update = 1;
+            } else {
+                i++;
+            }
+        }
     }
 }

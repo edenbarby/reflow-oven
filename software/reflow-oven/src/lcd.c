@@ -1,8 +1,8 @@
 /* TODO:
         - Make a 6x4 font with A-Z0-9 and maybe a-z, 5x3 is also possible
-            o 5 x 8 in 84 x 48 -> 16 chars x 6 lines ->  96 chars
-            o 4 x 6 in 84 x 48 -> 21 chars x 8 lines -> 168 chars
-            o 3 x 5 in 84 x 48 -> 28 chars x 9 lines -> 252 chars
+            o 5(+1) x 8(+1) in 84 x 48 -> 14 chars x 5 lines ->  70 chars
+            o 4(+1) x 6(+1) in 84 x 48 -> 17 chars x 7 lines -> 119 chars
+            o 3(+1) x 5(+1) in 84 x 48 -> 21 chars x 8 lines -> 168 chars
         - Migrate to DMA SPI
 */
 
@@ -94,7 +94,8 @@ static const uint8_t charset[96][5] = {
     ,{0x00, 0x41, 0x22, 0x14, 0x08} // 0x3e >
     ,{0x02, 0x01, 0x51, 0x09, 0x06} // 0x3f ?
     ,{0x32, 0x49, 0x79, 0x41, 0x3e} // 0x40 @
-    ,{0x7e, 0x11, 0x11, 0x11, 0x7e} // 0x41 A
+    //,{0x7e, 0x11, 0x11, 0x11, 0x7e} // 0x41 A
+    ,{0x00, 0x78, 0x14, 0x78, 0x00} // 0x41 A (sml)
     ,{0x7f, 0x49, 0x49, 0x49, 0x36} // 0x42 B
     ,{0x3e, 0x41, 0x41, 0x41, 0x22} // 0x43 C
     ,{0x7f, 0x41, 0x41, 0x22, 0x1c} // 0x44 D
@@ -208,6 +209,8 @@ void lcd_init(void) {
 
     lcd_write_bytes(LCD_MODE_CMD, lcd_settings_default, 8);
 
+    LL_GPIO_SetOutputPin(LCD_PORT, LCD_BACKLIGHT_PIN);
+
     lcd_update();
 }
 
@@ -236,14 +239,14 @@ void lcd_set_cursor(uint8_t x, uint8_t y) {
     lcd_write_byte(LCD_MODE_CMD, LCD_ADDRY | (LCD_ADDRY_MSK & y));
 }
 
-void lcd_print(const char * string, uint32_t len) {
+void lcd_print(const uint8_t * data, uint32_t len) {
     uint32_t c, i, j, k;
     i = 0;
     for(j = 0; j < len; j++) {
         frame[i++] = 0x00;
         i %= LCD_FRAME_LENGTH;
 
-        c = (string[j] - 0x20) % 96;
+        c = (data[j] - 0x20) % 96;
         for(k = 0; k < 5; k++) {
             frame[i++] = charset[c][k];
             i %= LCD_FRAME_LENGTH;
