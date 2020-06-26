@@ -1,0 +1,45 @@
+#ifndef UTIL_H
+#define UTIL_H
+
+
+// Timer 16 Channel 1
+#define BUZZER_PORT GPIOA
+#define BUZZER_PIN  LL_GPIO_PIN_6
+
+#define LCD_PORT          GPIOB
+#define LCD_CS_PIN        LL_GPIO_PIN_6
+#define LCD_RST_PIN       LL_GPIO_PIN_7
+#define LCD_MODE_PIN      LL_GPIO_PIN_8
+#define LCD_BACKLIGHT_PIN LL_GPIO_PIN_9
+
+#define LED_RED_PORT   GPIOC // LED_1
+#define LED_RED_PIN    LL_GPIO_PIN_13
+#define LED_GREEN_PORT GPIOC // LED_2
+#define LED_GREEN_PIN  LL_GPIO_PIN_14
+#define LED_BLUE_PORT  GPIOC // LED_3
+#define LED_BLUE_PIN   LL_GPIO_PIN_15
+
+#define RELAY_1_PORT GPIOC
+#define RELAY_1_PIN  LL_GPIO_PIN_0
+#define RELAY_2_PORT GPIOC
+#define RELAY_2_PIN  LL_GPIO_PIN_1
+#define RELAY_3_PORT GPIOC
+#define RELAY_3_PIN  LL_GPIO_PIN_2
+
+#define SD_CS_PORT GPIOC
+#define SD_CS_PIN  LL_GPIO_PIN_6
+
+// Timer 2 Channel 1
+#define SERVO_PORT GPIOA
+#define SERVO_PIN  LL_GPIO_PIN_5
+
+#define SPI2_PORT      GPIOB
+#define SPI2_SCLK_PIN  LL_GPIO_PIN_13
+#define SPI2_MISO_PIN  LL_GPIO_PIN_14
+#define SPI2_MOSI_PIN  LL_GPIO_PIN_15
+
+#define TC_CS_PORT   GPIOB
+#define TC_CS_PIN    LL_GPIO_PIN_12
+
+
+#endif // UTIL_H

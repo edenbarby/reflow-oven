@@ -2,6 +2,7 @@
 #include "stm32f3xx_ll_bus.h"
 #include "stm32f3xx_ll_gpio.h"
 #include "stm32f3xx_ll_utils.h"
+#include "lcd.h"
 #include "system.h"
 
 
@@ -11,6 +12,7 @@ int main(void) {
 
     system_clock_init_pll_hse_72();
     system_time_init();
+    lcd_init();
 
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
     LL_GPIO_StructInit(&init_struct_gpio);
@@ -28,6 +30,14 @@ int main(void) {
         if(current - last_led > 500000ULL) {
             last_led = current;
             LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
+
+            lcd_clear();
+            lcd_print("test123", 7);
+            lcd_update();
+            // spi2_transceive_n(data, 3);
         }
+        // __HAL_SPI_ENABLE(&spi_handle);
+        // HAL_SPI_TransmitReceive(&spi_handle, data, data, 3, 1000);
+        // __HAL_SPI_DISABLE(&spi_handle);
     }
 }
