@@ -8,7 +8,7 @@ extern uint32_t system_hclk;
 extern uint32_t system_pclk1;
 extern uint32_t system_pclk2;
 uint32_t system_tick = 0;
-uint32_t system_tick_factor_us = 1;
+uint32_t system_tick_factor_usec = 1;
 
 
 void system_clock_init_pll_hse_72(void) {
@@ -75,22 +75,27 @@ void system_time_init(void) {
     // SysTick clock is HCLK / 8.
     SysTick->CTRL = SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
     // System time in microseconds == systick / system_tick_factor_us.
-    system_tick_factor_us = system_hclk / (8UL * 1000000UL);
+    system_tick_factor_usec = system_hclk / (8UL * 1000000UL);
 }
 
-uint64_t system_time_get_us(void) {
-    uint64_t ticks;
-
-    // Pretend like SysTick is counting upwards.
-    ticks = SysTick_LOAD_RELOAD_Msk - SysTick->VAL;
-    ticks |= (uint64_t)(system_tick) << 24;
-
-    return (uint64_t)(ticks / system_tick_factor_us);
+uint64_t system_usec2tick(uint64_t usec) {
+    return system_tick_factor_usec * usec;
 }
 
-void system_time_wait_us(uint64_t us) {
-    uint64_t start = system_time_get_us();
-    while((start + us) >= system_time_get_us());
+uint64_t system_time_get_tick(void) {
+    return ((uint64_t)(system_tick) << 24) | (SysTick_LOAD_RELOAD_Msk - SysTick->VAL);
+}
+
+uint64_t system_time_get_usec(void) {
+    return system_time_get_tick() / (uint64_t)(system_tick_factor_usec);
+}
+
+void system_time_wait_usec(uint64_t usec) {
+    uint64_t target_tick;
+    
+    target_tick = system_time_get_tick() + (uint64_t)(system_tick_factor_usec) * usec;
+
+    while(target_tick > system_time_get_tick());
 }
 
 void system_handler(void) {

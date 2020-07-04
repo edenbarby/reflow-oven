@@ -9,7 +9,7 @@
 #include "stm32f3xx_ll_bus.h"
 #include "stm32f3xx_ll_gpio.h"
 #include "lcd.h"
-#include "spi2.h"
+#include "spi.h"
 #include "system.h"
 #include "util.h"
 
@@ -181,6 +181,7 @@ static const uint8_t lcd_settings_default[8] = {
 };
 
 static uint8_t frame[LCD_FRAME_LENGTH];
+static struct spi_config spi_config;
 
 
 static void lcd_write_byte(enum LCD_MODE mode, uint8_t byte);
@@ -190,7 +191,12 @@ static void lcd_write_bytes(enum LCD_MODE mode, const uint8_t * bytes, uint32_t 
 void lcd_init(void) {
     LL_GPIO_InitTypeDef init_struct_gpio;
 
-    spi2_init();
+    spi_config.bit_order = LL_SPI_MSB_FIRST;
+    spi_config.clock_phase = LL_SPI_PHASE_1EDGE;
+    spi_config.clock_polarity = LL_SPI_POLARITY_LOW;
+    spi_config.prescaler = 0;
+
+    spi_init(&spi_config, 4000000);
 
     // Init GPIO.
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
@@ -203,9 +209,9 @@ void lcd_init(void) {
     LL_GPIO_Init(LCD_PORT, &init_struct_gpio);
 
     LL_GPIO_ResetOutputPin(LCD_PORT, LCD_RST_PIN);
-    system_time_wait_us(10000);
+    system_time_wait_usec(10000);
     LL_GPIO_SetOutputPin(LCD_PORT, LCD_RST_PIN);
-    system_time_wait_us(10000);
+    system_time_wait_usec(10000);
 
     lcd_write_bytes(LCD_MODE_CMD, lcd_settings_default, 8);
 
@@ -246,7 +252,12 @@ void lcd_print(const uint8_t * data, uint32_t len) {
         frame[i++] = 0x00;
         i %= LCD_FRAME_LENGTH;
 
-        c = (data[j] - 0x20) % 96;
+        if((data[j] < 0x20U) ||(data[j] > 0x7F)) {
+            c = 0;
+        } else {
+            c = data[j] - 0x20;
+        }
+        
         for(k = 0; k < 5; k++) {
             frame[i++] = charset[c][k];
             i %= LCD_FRAME_LENGTH;
@@ -277,8 +288,10 @@ void lcd_write_byte(enum LCD_MODE mode, uint8_t data) {
     } else if(mode == LCD_MODE_DATA) {
         LL_GPIO_SetOutputPin(LCD_PORT, LCD_MODE_PIN);
     }
-
-    spi2_transmit(&data, 1);
+    
+    LL_GPIO_ResetOutputPin(LCD_PORT, LCD_CS_PIN);
+    spi_transmit(&spi_config, &data, 1);
+    LL_GPIO_SetOutputPin(LCD_PORT, LCD_CS_PIN);
 }
 
 void lcd_write_bytes(enum LCD_MODE mode, const uint8_t * data, uint32_t len) {
@@ -288,5 +301,7 @@ void lcd_write_bytes(enum LCD_MODE mode, const uint8_t * data, uint32_t len) {
         LL_GPIO_SetOutputPin(LCD_PORT, LCD_MODE_PIN);
     }
 
-    spi2_transmit(data, len);
+    LL_GPIO_ResetOutputPin(LCD_PORT, LCD_CS_PIN);
+    spi_transmit(&spi_config, data, len);
+    LL_GPIO_SetOutputPin(LCD_PORT, LCD_CS_PIN);
 }

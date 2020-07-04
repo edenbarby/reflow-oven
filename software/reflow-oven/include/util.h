@@ -35,13 +35,8 @@
 #define SERVO_PORT GPIOA
 #define SERVO_PIN  LL_GPIO_PIN_5 // AF1
 
-#define SPI2_PORT     GPIOB
-#define SPI2_SCLK_PIN LL_GPIO_PIN_13 // AF5
-#define SPI2_MISO_PIN LL_GPIO_PIN_14 // AF5
-#define SPI2_MOSI_PIN LL_GPIO_PIN_15 // AF5
-
-#define TC_PORT   GPIOB
-#define TC_CS_PIN LL_GPIO_PIN_12
+#define MAX31855_PORT   GPIOB
+#define MAX31855_CS_PIN LL_GPIO_PIN_12
 
 
 uint32_t system_hclk;

@@ -28,9 +28,10 @@ void usart2_init(void) {
     // Init USART.
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
     LL_USART_StructInit(&init_struct_usart);
-    LL_USART_ClockStructInit(&init_struct_usart_clock);
     LL_USART_Init(USART2, &init_struct_usart);
-    LL_USART_SetBaudRate(USART2, system_pclk1, LL_USART_OVERSAMPLING_16, 9600UL);
+    LL_USART_SetBaudRate(USART2, system_pclk1, LL_USART_OVERSAMPLING_16, 115200UL);
+    LL_USART_DisableOverrunDetect(USART2);
+    LL_USART_ClockStructInit(&init_struct_usart_clock);
     LL_USART_ClockInit(USART2, &init_struct_usart_clock);
     LL_USART_Enable(USART2);
     LL_USART_EnableDirectionTx(USART2);
