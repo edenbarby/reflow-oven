@@ -37,7 +37,8 @@ int main(void)
 
             n = usart2_rx_available();
             n = n > 20 ? 20 : n;
-            if(n > 0){
+            if (n > 0)
+            {
                 usart2_rx_n(buf, n);
                 usart2_tx_n(buf, n);
             }

@@ -122,12 +122,12 @@ void USART2_IRQHandler(void)
         // TODO: USART overrun error
         LL_USART_ClearFlag_ORE(USART2);
     }
-    if(LL_USART_IsActiveFlag_NE(USART2))
+    if (LL_USART_IsActiveFlag_NE(USART2))
     {
         // TODO: noise error
         LL_USART_ClearFlag_NE(USART2);
     }
-    if(LL_USART_IsActiveFlag_FE(USART2))
+    if (LL_USART_IsActiveFlag_FE(USART2))
     {
         // TODO: framing error
         LL_USART_ClearFlag_FE(USART2);

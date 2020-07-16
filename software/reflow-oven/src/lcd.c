@@ -13,32 +13,31 @@
 #include "system.h"
 #include "util.h"
 
-
 /* Instruction Set */
-#define LCD_FCNST     0x20
+#define LCD_FCNST 0x20
 #define LCD_FCNST_EXT 0x01
 #define LCD_FCNST_VRT 0x02
 #define LCD_FCNST_PWR 0x04
 /* Extended instruction set . */
-#define LCD_DISPC     0x08
+#define LCD_DISPC 0x08
 #define LCD_DISPC_CLR 0x00
 #define LCD_DISPC_SET 0x01
 #define LCD_DISPC_NRM 0x04
 #define LCD_DISPC_INV 0x05
-#define LCD_ADDRY     0x40
+#define LCD_ADDRY 0x40
 #define LCD_ADDRY_MSK 0x07
-#define LCD_ADDRX     0x80
+#define LCD_ADDRX 0x80
 #define LCD_ADDRX_MSK 0x7F
 /* Basic instruction set. */
-#define LCD_TMPCF     0x04
+#define LCD_TMPCF 0x04
 #define LCD_TMPCF_MSK 0x03
-#define LCD_BIASS     0x10
+#define LCD_BIASS 0x10
 #define LCD_BIASS_MSK 0x07
-#define LCD_VOPST     0x80
+#define LCD_VOPST 0x80
 #define LCD_VOPST_MSK 0x7F
 
-#define LCD_WIDTH         84
-#define LCD_HEIGHT        48
+#define LCD_WIDTH 84
+#define LCD_HEIGHT 48
 #define LCD_FRAME_LENGTH 504 // (LCD_WIDTH * LCD_HEIGHT / 8)
 
 /* BYTE REVERSING LOOKUP TABLE BLACK MAGIC ************************************/
@@ -48,8 +47,9 @@
 // static const uint8_t byte_reverse[256] = {R6(0), R6(2), R6(1), R6(3)};
 /******************************************************************************/
 
-enum LCD_MODE {
-    LCD_MODE_CMD  = 0,
+enum LCD_MODE
+{
+    LCD_MODE_CMD = 0,
     LCD_MODE_DATA = 1
 };
 
@@ -177,18 +177,16 @@ static const uint8_t lcd_settings_default[8] = {
     /* Set RAM Y address to 0. */
     LCD_ADDRY | (LCD_ADDRY_MSK & 0x00),
     /* Set RAM X address to 0. */
-    LCD_ADDRX | (LCD_ADDRX_MSK & 0x00)
-};
+    LCD_ADDRX | (LCD_ADDRX_MSK & 0x00)};
 
 static uint8_t frame[LCD_FRAME_LENGTH];
 static struct spi_config spi_config;
 
-
 static void lcd_write_byte(enum LCD_MODE mode, uint8_t byte);
-static void lcd_write_bytes(enum LCD_MODE mode, const uint8_t * bytes, uint32_t len);
+static void lcd_write_bytes(enum LCD_MODE mode, const uint8_t *bytes, uint32_t len);
 
-
-void lcd_init(void) {
+void lcd_init(void)
+{
     LL_GPIO_InitTypeDef init_struct_gpio;
 
     spi_config.bit_order = LL_SPI_MSB_FIRST;
@@ -200,12 +198,12 @@ void lcd_init(void) {
 
     // Init GPIO.
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
-    init_struct_gpio.Alternate  = LL_GPIO_AF_0;
-    init_struct_gpio.Mode       = LL_GPIO_MODE_OUTPUT;
+    init_struct_gpio.Alternate = LL_GPIO_AF_0;
+    init_struct_gpio.Mode = LL_GPIO_MODE_OUTPUT;
     init_struct_gpio.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-    init_struct_gpio.Pin        = LCD_CS_PIN | LCD_RST_PIN | LCD_MODE_PIN | LCD_BACKLIGHT_PIN;
-    init_struct_gpio.Pull       = LL_GPIO_PULL_NO;
-    init_struct_gpio.Speed      = LL_GPIO_SPEED_FREQ_LOW;
+    init_struct_gpio.Pin = LCD_CS_PIN | LCD_RST_PIN | LCD_MODE_PIN | LCD_BACKLIGHT_PIN;
+    init_struct_gpio.Pull = LL_GPIO_PULL_NO;
+    init_struct_gpio.Speed = LL_GPIO_SPEED_FREQ_LOW;
     LL_GPIO_Init(LCD_PORT, &init_struct_gpio);
 
     LL_GPIO_ResetOutputPin(LCD_PORT, LCD_RST_PIN);
@@ -220,45 +218,57 @@ void lcd_init(void) {
     lcd_update();
 }
 
-void lcd_update(void) {
+void lcd_update(void)
+{
     lcd_set_cursor(0, 0);
     lcd_write_bytes(LCD_MODE_DATA, frame, LCD_FRAME_LENGTH);
 }
 
-void lcd_clear(void) {
+void lcd_clear(void)
+{
     uint32_t i;
-    for(i = 0; i < LCD_FRAME_LENGTH; i++) {
+    for (i = 0; i < LCD_FRAME_LENGTH; i++)
+    {
         frame[i] = 0x00;
     }
 }
 
-void lcd_set(void) {
+void lcd_set(void)
+{
     uint32_t i;
-    for(i = 0; i < LCD_FRAME_LENGTH; i++) {
+    for (i = 0; i < LCD_FRAME_LENGTH; i++)
+    {
         frame[i] = 0xFF;
     }
 }
 
-void lcd_set_cursor(uint8_t x, uint8_t y) {
+void lcd_set_cursor(uint8_t x, uint8_t y)
+{
     lcd_write_byte(LCD_MODE_CMD, LCD_FCNST); // Use basic extended instructions
     lcd_write_byte(LCD_MODE_CMD, LCD_ADDRX | (LCD_ADDRX_MSK & x));
     lcd_write_byte(LCD_MODE_CMD, LCD_ADDRY | (LCD_ADDRY_MSK & y));
 }
 
-void lcd_print(const uint8_t * data, uint32_t len) {
+void lcd_print(const uint8_t *data, uint32_t len)
+{
     uint32_t c, i, j, k;
     i = 0;
-    for(j = 0; j < len; j++) {
+    for (j = 0; j < len; j++)
+    {
         frame[i++] = 0x00;
         i %= LCD_FRAME_LENGTH;
 
-        if((data[j] < 0x20U) ||(data[j] > 0x7F)) {
+        if ((data[j] < 0x20U) || (data[j] > 0x7F))
+        {
             c = 0;
-        } else {
+        }
+        else
+        {
             c = data[j] - 0x20;
         }
-        
-        for(k = 0; k < 5; k++) {
+
+        for (k = 0; k < 5; k++)
+        {
             frame[i++] = charset[c][k];
             i %= LCD_FRAME_LENGTH;
         }
@@ -268,36 +278,46 @@ void lcd_print(const uint8_t * data, uint32_t len) {
     }
 }
 
-void lcd_print_c(uint8_t c) {
+void lcd_print_c(uint8_t c)
+{
     uint8_t i;
 
     c = (c - 0x20) % 96;
 
     lcd_write_byte(LCD_MODE_DATA, 0x00);
 
-    for(i = 0; i < 5; i++) {
+    for (i = 0; i < 5; i++)
+    {
         lcd_write_byte(LCD_MODE_DATA, charset[c][i]);
     }
 
     lcd_write_byte(LCD_MODE_DATA, 0x00);
 }
 
-void lcd_write_byte(enum LCD_MODE mode, uint8_t data) {
-    if(mode == LCD_MODE_CMD) {
+void lcd_write_byte(enum LCD_MODE mode, uint8_t data)
+{
+    if (mode == LCD_MODE_CMD)
+    {
         LL_GPIO_ResetOutputPin(LCD_PORT, LCD_MODE_PIN);
-    } else if(mode == LCD_MODE_DATA) {
+    }
+    else if (mode == LCD_MODE_DATA)
+    {
         LL_GPIO_SetOutputPin(LCD_PORT, LCD_MODE_PIN);
     }
-    
+
     LL_GPIO_ResetOutputPin(LCD_PORT, LCD_CS_PIN);
     spi_transmit(&spi_config, &data, 1);
     LL_GPIO_SetOutputPin(LCD_PORT, LCD_CS_PIN);
 }
 
-void lcd_write_bytes(enum LCD_MODE mode, const uint8_t * data, uint32_t len) {
-    if(mode == LCD_MODE_CMD) {
+void lcd_write_bytes(enum LCD_MODE mode, const uint8_t *data, uint32_t len)
+{
+    if (mode == LCD_MODE_CMD)
+    {
         LL_GPIO_ResetOutputPin(LCD_PORT, LCD_MODE_PIN);
-    } else if(mode == LCD_MODE_DATA) {
+    }
+    else if (mode == LCD_MODE_DATA)
+    {
         LL_GPIO_SetOutputPin(LCD_PORT, LCD_MODE_PIN);
     }
 
