@@ -44,7 +44,7 @@ void max31855_init(void)
     LL_GPIO_SetOutputPin(MAX31855_PORT, MAX31855_CS_PIN);
 }
 
-enum MAX31855_STATUS max31855_read(float *temp_tc, float *temp_ref)
+enum MAX31855_STATUS max31855_read(int16_t *temp_tc, int16_t *temp_ref)
 {
     uint8_t buf[4];
     uint32_t reading;
@@ -56,8 +56,32 @@ enum MAX31855_STATUS max31855_read(float *temp_tc, float *temp_ref)
     reading = ((uint32_t)(buf[0]) << 24) | ((uint32_t)(buf[1]) << 16);
     reading |= ((uint32_t)(buf[2]) << 8) | (uint32_t)(buf[3]);
 
-    *temp_tc = (float)((int16_t)((reading & MAX31855_TCTEMP_MSK) >> 16) >> 2) / 4.0f;
-    *temp_ref = (float)((int16_t)(reading & MAX31855_REFTEMP_MSK) >> MAX31855_REFTEMP_POS) / 16.0f;
+    /*
+    The following explains how you take an unaligned sign integer packed into
+    an unsigned integer and cast it into an aligned signed integer while
+    preserving the sign. In this example we'll start with an 8 bit signed
+    integer (1 sign bit and 7 data bits) pack into an unsigned 16 bit integer.
+
+     15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
+     0 | 0 |SGN|MSB| 5 | 4 | 3 | 2 | 1 |LSB| 0 | 0 | 0 | 0 | 0 | 0 |
+
+    First you need to shift left until the SGN bit is aligned with the most
+    significant bit of the desired integer size.
+
+     15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
+    SGN|MSB| 5 | 4 | 3 | 2 | 1 |LSB| 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+    
+    You then need to cast this as a signed integer before shifting right until
+    the LSB is aligned with the least significant bit of the desired integer
+    size. Because you cast the it as a signed integer before you shifted right
+    into the correct alignment, the signed bit correctly copied right as you
+    shifted the integer into alignment, preserving the signedness.
+
+     15  14  13  12  11  10  9   8   7   6   5   4   3   2   1   0
+    SGN|SGN|SGN|SGN|SGN|SGN|SGN|SGN|MSB| 5 | 4 | 3 | 2 | 1 |LSB| 0 |
+    */
+    *temp_tc = (int16_t)((reading & MAX31855_TCTEMP_MSK) >> 16) >> 2;
+    *temp_ref = (int16_t)(reading & MAX31855_REFTEMP_MSK) >> MAX31855_REFTEMP_POS;
 
     // Check that reserved bits are 0.
     if (reading & MAX31855_RESERVED)
@@ -87,4 +111,14 @@ enum MAX31855_STATUS max31855_read(float *temp_tc, float *temp_ref)
     }
 
     return MAX31855_OK;
+}
+
+float max31855_convert_temp_tc(int16_t temp_tc)
+{
+    return (float)(temp_tc) / 4.0f;
+}
+
+float max31855_convert_temp_ref(int16_t temp_ref)
+{
+    return (float)(temp_ref) / 16.0f;
 }

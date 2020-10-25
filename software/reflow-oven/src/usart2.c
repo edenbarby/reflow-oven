@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "stm32f3xx_ll_bus.h"
 #include "stm32f3xx_ll_gpio.h"
 #include "stm32f3xx_ll_usart.h"
@@ -11,20 +12,25 @@
 // #define FTDI_RX   LL_GPIO_PIN_2
 // #define FTDI_TX   LL_GPIO_PIN_3
 
-// Note that the ring buffer will only utilize CAPACITY - 1.
-#define TX_BUFFER_CAPACITY 300
-#define RX_BUFFER_CAPACITY 300
+static uint32_t overrun_errors = 0;
+static uint32_t noise_errors = 0;
+static uint32_t framing_errors = 0;
 
-static uint8_t tx_buffer[TX_BUFFER_CAPACITY];
-static uint8_t rx_buffer[RX_BUFFER_CAPACITY];
-static ring_buffer_handle tx_buffer_h = {TX_BUFFER_CAPACITY, 0, 0, tx_buffer};
-static ring_buffer_handle rx_buffer_h = {RX_BUFFER_CAPACITY, 0, 0, rx_buffer};
+static uint32_t (*usart2_tx_pop)(uint8_t *);
+static void (*usart2_rx_push)(uint8_t);
 
-void usart2_init(void)
+/*
+pop A function that puts a single byte of data to be transmitted in positional argument 1 and returns a True value if there was data to pop, otherwise a False value.
+push Take a single byte to store.
+*/
+void usart2_init(uint32_t (*tx_pop)(uint8_t *), void (*rx_push)(uint8_t))
 {
     LL_GPIO_InitTypeDef init_struct_gpio;
     LL_USART_InitTypeDef init_struct_usart;
     LL_USART_ClockInitTypeDef init_struct_usart_clock;
+
+    usart2_tx_pop = tx_pop;
+    usart2_rx_push = rx_push;
 
     // Init GPIO.
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
@@ -56,39 +62,39 @@ void usart2_init(void)
     LL_USART_EnableDirectionRx(USART2);
 }
 
-uint32_t usart2_tx_available(void)
+void usart2_tx_start(void)
 {
-    return ring_buffer_remaining(&tx_buffer_h);
+    LL_USART_EnableIT_TXE(USART2);
 }
 
-uint32_t usart2_rx_available(void)
+void usart2_clear_overrun(void)
 {
-    return ring_buffer_used(&rx_buffer_h);
+    overrun_errors = 0;
 }
 
-void usart2_tx_n(const uint8_t *data, uint32_t n)
+void usart2_clear_noise(void)
 {
-    uint32_t i = 0;
-
-    while (i < n)
-    {
-        i += ring_buffer_push_n(&tx_buffer_h, &(data[i]), (n - i));
-        // TODO: track maximum tx buffer usage
-        if (!LL_USART_IsEnabledIT_TXE(USART2))
-        {
-            LL_USART_EnableIT_TXE(USART2);
-        }
-    }
+    noise_errors = 0;
 }
 
-void usart2_rx_n(uint8_t *data, uint32_t n)
+void usart2_clear_frame(void)
 {
-    uint32_t i = 0;
+    framing_errors = 0;
+}
 
-    while (i < n)
-    {
-        i += ring_buffer_pop_n(&rx_buffer_h, &(data[i]), (n - i));
-    }
+uint32_t usart2_get_overrun(void)
+{
+    return overrun_errors;
+}
+
+uint32_t usart2_get_noise(void)
+{
+    return noise_errors;
+}
+
+uint32_t usart2_get_frame(void)
+{
+    return framing_errors;
 }
 
 void USART2_IRQHandler(void)
@@ -97,7 +103,7 @@ void USART2_IRQHandler(void)
 
     if (LL_USART_IsActiveFlag_TXE(USART2))
     {
-        n = ring_buffer_pop(&tx_buffer_h, &data);
+        n = usart2_tx_pop(&data);
         if (n)
         {
             LL_USART_TransmitData8(USART2, data);
@@ -109,13 +115,7 @@ void USART2_IRQHandler(void)
     }
     if (LL_USART_IsActiveFlag_RXNE(USART2))
     {
-        data = LL_USART_ReceiveData8(USART2);
-        n = ring_buffer_push(&rx_buffer_h, data);
-        // TODO: track maximum rx buffer usage
-        if (n == 0)
-        {
-            // TODO: ring buffer overrun error
-        }
+        usart2_rx_push(LL_USART_ReceiveData8(USART2));
     }
     if (LL_USART_IsActiveFlag_ORE(USART2))
     {

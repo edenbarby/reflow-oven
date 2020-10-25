@@ -6,9 +6,9 @@
 typedef struct
 {
     uint32_t capacity;
-    uint32_t head;
-    uint32_t tail;
-    uint8_t *buf;
+    volatile uint32_t head;
+    volatile uint32_t tail;
+    volatile uint8_t *buf;
 } ring_buffer_handle;
 
 uint32_t ring_buffer_empty(ring_buffer_handle *h);

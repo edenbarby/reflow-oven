@@ -6,8 +6,8 @@
 extern uint32_t system_hclk;
 extern uint32_t system_pclk1;
 extern uint32_t system_pclk2;
-uint32_t system_tick = 0;
-uint32_t system_tick_factor_usec = 1;
+static volatile uint32_t system_tick = 0;
+static uint32_t system_tick_factor_usec = 1;
 
 void system_clock_init_pll_hse_72(void)
 {
