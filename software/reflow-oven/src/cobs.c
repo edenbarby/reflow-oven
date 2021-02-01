@@ -10,7 +10,8 @@ uint32_t cobs_encode(const uint8_t *src_ptr, uint32_t src_len, uint8_t *dst_buf_
 
     if ((src_ptr == 0) || (dst_buf_ptr == 0))
     {
-        while (1); // Null pointer.
+        while (1)
+            ; // Null pointer.
     }
 
     for (uint32_t src_i = 0; src_i < src_len; src_i++)
@@ -18,7 +19,8 @@ uint32_t cobs_encode(const uint8_t *src_ptr, uint32_t src_len, uint8_t *dst_buf_
         // Note that code_i is always less than dst_i.
         if (dst_i >= dst_buf_len)
         {
-            while (1); // Output buffer overflow.
+            while (1)
+                ; // Output buffer overflow.
         }
 
         if (src_ptr[src_i] == 0)
@@ -54,14 +56,16 @@ struct cobs_result cobs_decode(const uint8_t *src_ptr, uint32_t src_len, uint8_t
 
     if ((src_ptr == 0) || (dst_buf_ptr == 0))
     {
-        while (1); // Null pointer.
+        while (1)
+            ; // Null pointer.
     }
 
     for (uint32_t src_i = 0; src_i < src_len; src_i++)
     {
         if (dst_i >= dst_buf_len)
         {
-            while (1); // Output buffer overflow.
+            while (1)
+                ; // Output buffer overflow.
         }
 
         if (src_ptr[src_i] == 0)

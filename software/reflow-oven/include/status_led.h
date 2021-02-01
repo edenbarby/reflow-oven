@@ -7,6 +7,7 @@
 #define STATUS_LED_GREEN LL_GPIO_PIN_14 // LED_2
 #define STATUS_LED_BLUE LL_GPIO_PIN_15  // LED_3
 
+void status_led_init(void);
 void status_led_set(uint32_t led);
 void status_led_reset(uint32_t led);
 void status_led_toggle(uint32_t led);

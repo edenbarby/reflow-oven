@@ -3,6 +3,7 @@
 #include "stm32f3xx_ll_gpio.h"
 #include "stm32f3xx_ll_usart.h"
 #include "ring_buffer.h"
+#include "system.h"
 #include "usart2.h"
 #include "util.h"
 
@@ -45,7 +46,7 @@ void usart2_init(uint32_t (*tx_pop)(uint8_t *), void (*rx_push)(uint8_t))
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
     LL_USART_StructInit(&init_struct_usart);
     LL_USART_Init(USART2, &init_struct_usart);
-    LL_USART_SetBaudRate(USART2, system_pclk1, LL_USART_OVERSAMPLING_16, 115200UL);
+    LL_USART_SetBaudRate(USART2, system_clock_get_pclk1(), LL_USART_OVERSAMPLING_16, 115200UL);
     LL_USART_ClockStructInit(&init_struct_usart_clock);
     LL_USART_ClockInit(USART2, &init_struct_usart_clock);
 
@@ -119,17 +120,17 @@ void USART2_IRQHandler(void)
     }
     if (LL_USART_IsActiveFlag_ORE(USART2))
     {
-        // TODO: USART overrun error
+        overrun_errors++;
         LL_USART_ClearFlag_ORE(USART2);
     }
     if (LL_USART_IsActiveFlag_NE(USART2))
     {
-        // TODO: noise error
+        noise_errors++;
         LL_USART_ClearFlag_NE(USART2);
     }
     if (LL_USART_IsActiveFlag_FE(USART2))
     {
-        // TODO: framing error
+        framing_errors++;
         LL_USART_ClearFlag_FE(USART2);
     }
 }

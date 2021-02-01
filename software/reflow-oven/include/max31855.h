@@ -12,8 +12,6 @@ enum MAX31855_STATUS
 };
 
 void max31855_init(void);
-enum MAX31855_STATUS max31855_read(int16_t *temp_tc, int16_t *temp_ref);
-float max31855_convert_temp_tc(int16_t temp_tc);
-float max31855_convert_temp_ref(int16_t temp_ref);
+enum MAX31855_STATUS max31855_read(float *temp_tc, float *temp_ref);
 
 #endif // MAX31855_H

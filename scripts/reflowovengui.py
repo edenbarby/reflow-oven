@@ -25,7 +25,7 @@ class ReflowOvenApp(tk.Frame):
         self.str_temp_ref = tk.StringVar(self, 'N/A')
         self.str_temp_cpu = tk.StringVar(self, 'N/A')
         self.str_eta = tk.StringVar(self, 'N/A')
-        self.oven = reflowoven.ReflowOven(timeout=0.1)
+        self.oven = reflowoven.ReflowOven()
         self.reflow_start_time = time.time()
         self.plot_target_time = []
         self.plot_target_temp = []
@@ -140,19 +140,20 @@ class ReflowOvenApp(tk.Frame):
     def connect(self):
         action = self.button_connect['text']
         if action == 'CONNECT':
-            port_desc = self.str_port_desc.get()
-            serial_devices = reflowoven.available_serial_ports()
-            for port in serial_devices:
-                if serial_devices[port] == port_desc:
+            desc_target = self.str_port_desc.get()
+            for port, desc in reflowoven.available_serial_ports().items():
+                if desc == desc_target:
+                    baudrate = int(self.str_baudrate.get())
+                    if port and baudrate > 0:
+                        if self.oven.connect(port, baudrate):
+                            print('Connection successful.')
+                        else:
+                            print('Error: Failed to connect to reflow oven.')
+                    else:
+                        print('Error: Invalid serial port ({}) and/or baudrate ({}) selected.'.format(repr(port), baudrate))
                     break
-            baudrate = int(self.str_baudrate.get())
-            if port and baudrate > 0:
-                if self.oven.connect(port, baudrate):
-                    print('Connection successful.')
-                else:
-                    print('Error: Failed to connect to reflow oven.')
-            else:
-                print('Error: Invalid serial port ({}) and/or baudrate ({}) selected.'.format(repr(port), baudrate))
+            if desc != desc_target:
+                print('Error: unable to find device matching description {}.'.format(desc_target))
         elif action == 'DISCONNECT':
             self.oven.disconnect()
         else:
@@ -165,7 +166,7 @@ class ReflowOvenApp(tk.Frame):
             print('starting')
             profile_filename = self.str_profile.get()
             if profile_filename:
-                self.oven.reflow(profile_filename)
+                self.oven.run(profile_filename)
                 self.reflow_start_time = time.time()
                 self.plot_meas_time = []
                 self.plot_meas_temp = []
@@ -174,13 +175,14 @@ class ReflowOvenApp(tk.Frame):
                 print('Error: No reflow profile specified.')
         elif action == 'STOP':
             print('stopping')
-            self.oven.wait()
+            self.oven.cool()
         else:
             raise Exception('Unexpected start button text encountered ({}).'.format(repr(action)))
 
     def update(self):
-        state = self.oven.query_state()        
-        if state == -1: # Not connected.
+        success, _, state = self.oven.get_state()
+        if success == False: # Not connected.
+            self.oven.disconnect()
             self.button_connect['text'] = 'CONNECT'
             self.button_start['state'] = 'disabled'
             self.button_start['text'] = 'START'
@@ -191,24 +193,28 @@ class ReflowOvenApp(tk.Frame):
             self.str_temp_ref.set('N/A')
             self.str_temp_cpu.set('N/A')
             self.str_eta.set('N/A')
-        elif state == self.oven.STATE_WAIT or state == self.oven.STATE_REFLOW:
+        elif (state == self.oven.REFLOW_STATE_WAIT
+                or state == self.oven.REFLOW_STATE_RUN
+                or state == self.oven.REFLOW_STATE_COOL):
             state_label = self.oven.state2str(state)
-            tc_state, temp_oven, temp_ref = self.oven.query_temp_oven()
-            if tc_state == self.oven.TPOVN_ERROR_COMMS:
+            
+            _, error, temp_oven, temp_ref = self.oven.get_temp_tc()
+            if (error & self.oven.ERROR_TC_MASK) == self.oven.ERROR_TC_COMMS:
                 temp_oven = 'THERMOCOUPLE CHIP COMMS ERROR'
                 temp_ref = 'THERMOCOUPLE CHIP COMMS ERROR'
-            if tc_state == self.oven.TPOVN_FAULT:
+            elif (error & self.oven.ERROR_TC_MASK) == self.oven.ERROR_TC_FAULT:
                 temp_oven = 'UNKNOWN THERMOCOUPLE CHIP FAULT'
                 temp_ref = 'UNKNOWN THERMOCOUPLE CHIP FAULT'
-            if tc_state == self.oven.TPOVN_FAULT_OPEN:
+            elif (error & self.oven.ERROR_TC_MASK) == self.oven.ERROR_TC_OPEN:
                 temp_oven = 'THERMOCOUPLE DISCONNECTED'
-            if tc_state == self.oven.TPOVN_FAULT_SHORT_GND:
+            elif (error & self.oven.ERROR_TC_MASK) == self.oven.ERROR_TC_SHORT_GND:
                 temp_oven = 'THERMOCOUPLE SHORTED TO GROUND'
-            if tc_state == self.oven.TPOVN_FAULT_SHORT_VCC:
+            elif (error & self.oven.ERROR_TC_MASK) == self.oven.ERROR_TC_SHORT_VCC:
                 temp_oven = 'THERMOCOUPLE SHORTED TO POWER'
-            temp_cpu = self.oven.query_temp_cpu()
+            
+            _, _, temp_cpu = self.oven.get_temp_cpu()
 
-            if state == self.oven.STATE_REFLOW:
+            if state == self.oven.REFLOW_STATE_RUN:
                 self.plot_meas_time.append(time.time() - self.reflow_start_time)
                 self.plot_meas_temp.append(temp_ref)
                 self.update_plot()
@@ -222,10 +228,10 @@ class ReflowOvenApp(tk.Frame):
             self.str_temp_ref.set(temp_ref)
             self.str_temp_cpu.set(temp_cpu)
             self.str_eta.set('N/A')
-            if state == self.oven.STATE_WAIT:
-                self.button_start['text'] = 'START'
-            else:
+            if state == self.oven.REFLOW_STATE_RUN:
                 self.button_start['text'] = 'STOP'
+            else:
+                self.button_start['text'] = 'START'
             self.after(500, self.update)
         else:
             print('Error: Unknown state ({}) encountered, disconnecting.'.format(state))

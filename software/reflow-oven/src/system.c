@@ -3,11 +3,11 @@
 #include "stm32f3xx_ll_system.h"
 #include "system.h"
 
-extern uint32_t system_hclk;
-extern uint32_t system_pclk1;
-extern uint32_t system_pclk2;
-static volatile uint32_t system_tick = 0;
-static uint32_t system_tick_factor_usec = 1;
+static uint32_t system_hclk;
+static uint32_t system_pclk1;
+static uint32_t system_pclk2;
+static volatile uint32_t systick_overflow_counter = 0;
+static uint64_t system_tick_factor_usec = 1;
 
 void system_clock_init_pll_hse_72(void)
 {
@@ -16,30 +16,40 @@ void system_clock_init_pll_hse_72(void)
     if (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI)
     {
         LL_RCC_HSI_Enable();
-        while (!LL_RCC_HSI_IsReady());
+        while (!LL_RCC_HSI_IsReady())
+        {
+        }
 
         LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSI);
-        while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI);
+        while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI)
+        {
+        }
     }
 
     // Disable PLL and HSE before configuring them.
     if (READ_BIT(RCC->CR, RCC_CR_PLLON) == (RCC_CR_PLLON))
     {
         LL_RCC_PLL_Disable();
-        while (LL_RCC_PLL_IsReady());
+        while (LL_RCC_PLL_IsReady())
+        {
+        }
     }
 
     if (READ_BIT(RCC->CR, RCC_CR_HSEON) == (RCC_CR_HSEON))
     {
         LL_RCC_HSE_Disable();
-        while (LL_RCC_HSE_IsReady());
+        while (LL_RCC_HSE_IsReady())
+        {
+        }
     }
 
     // Ensure the flash latency is set to two wait states for 48 < hclk (sysclk) <= 72 MHz.
     if (LL_FLASH_GetLatency() != LL_FLASH_LATENCY_2)
     {
         LL_FLASH_SetLatency(LL_FLASH_LATENCY_2);
-        while (LL_FLASH_GetLatency() != LL_FLASH_LATENCY_2);
+        while (LL_FLASH_GetLatency() != LL_FLASH_LATENCY_2)
+        {
+        }
     }
 
     // HSE OSC -> 12 MHz
@@ -54,21 +64,42 @@ void system_clock_init_pll_hse_72(void)
     // to HSI and will subsequently shutdown HSE and PLL.
     // LL_RCC_HSE_EnableCSS(); // If the CSS is enabled, the CSS interrupt must be implimented and the CSSC must be cleared when the interrupt occurs.
     LL_RCC_HSE_Enable();
-    while (!LL_RCC_HSE_IsReady());
+    while (!LL_RCC_HSE_IsReady())
+    {
+    }
 
     LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE_DIV_2, LL_RCC_PLL_MUL_12);
     LL_RCC_PLL_Enable();
-    while (!LL_RCC_PLL_IsReady());
+    while (!LL_RCC_PLL_IsReady())
+    {
+    }
 
     LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
     LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
     LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
     LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
-    while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL);
+    while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
+    {
+    }
 
     system_hclk = 72000000UL;
     system_pclk1 = 36000000UL;
     system_pclk2 = 72000000UL;
+}
+
+uint32_t system_clock_get_hclk(void)
+{
+    return system_hclk;
+}
+
+uint32_t system_clock_get_pclk1(void)
+{
+    return system_pclk1;
+}
+
+uint32_t system_clock_get_pclk2(void)
+{
+    return system_pclk2;
 }
 
 void system_time_init(void)
@@ -89,26 +120,31 @@ uint64_t system_usec2tick(uint64_t usec)
 
 uint64_t system_time_get_tick(void)
 {
-    return ((uint64_t)(system_tick) << 24) | (SysTick_LOAD_RELOAD_Msk - SysTick->VAL);
+    __disable_irq();
+    uint64_t tick = ((uint64_t)(systick_overflow_counter) << 24) | (SysTick_LOAD_RELOAD_Msk - SysTick->VAL);
+    __enable_irq();
+    return tick;
 }
 
 uint64_t system_time_get_usec(void)
 {
-    return system_time_get_tick() / (uint64_t)(system_tick_factor_usec);
+    return system_time_get_tick() / system_tick_factor_usec;
 }
 
 void system_time_wait_usec(uint64_t usec)
 {
     uint64_t target_tick;
 
-    target_tick = system_time_get_tick() + (uint64_t)(system_tick_factor_usec)*usec;
+    target_tick = system_time_get_tick() + system_tick_factor_usec * usec;
 
-    while (target_tick > system_time_get_tick());
+    while (target_tick > system_time_get_tick())
+        ;
 }
 
 void system_handler(void)
 {
-    while (1);
+    while (1)
+        ;
 }
 
 void HardFault_Handler(void)
@@ -133,5 +169,5 @@ void UsageFault_Handler(void)
 
 void SysTick_Handler(void)
 {
-    system_tick++;
+    systick_overflow_counter++;
 }

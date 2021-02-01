@@ -2,23 +2,13 @@
 #define SERIAL_H
 
 #include <stdint.h>
+#include "cobs.h"
 
-// [type][data]
-#define SERIAL_TYPE_ACK 0x00
-#define SERIAL_TYPE_NACK 0x01
-#define SERIAL_TYPE_QUERY 0x10
-#define SERIAL_TYPE_RESP 0x11
-#define SERIAL_TYPE_WAIT 0x20
-#define SERIAL_TYPE_REFLOW 0x21
-
-// [query][query sub type]
-#define SERIAL_QUERY_STATE 0x00
-#define SERIAL_QUERY_TPOVN 0x10
-#define SERIAL_QUERY_TPCPU 0x11
+#define SERIAL_BUFFER_LEN 300
+#define SERIAL_PACKET_MAX_LEN CODS_DECODE_BUF_MAX(SERIAL_BUFFER_LEN)
 
 void serial_init(void);
-uint32_t serial_transmit(const uint8_t *buf, uint32_t len);
-uint32_t serial_receive(uint8_t *buf, uint32_t len);
-uint32_t serial_process(void);
+uint32_t serial_transmit(const uint8_t *packet, uint32_t len);
+uint32_t serial_receive(uint8_t *packet, uint32_t max_len);
 
 #endif // SERIAL_H
