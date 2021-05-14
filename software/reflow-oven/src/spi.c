@@ -74,7 +74,8 @@ uint32_t spi_init(struct spi_config *h, uint32_t baud_rate_max)
     {
         // SPI clock is too fast, bump up the APB1 prescaler.
         while (1)
-            ;
+        {
+        }
     }
 
     spi_config_update(h);
@@ -86,6 +87,13 @@ uint32_t spi_config_update(struct spi_config *h)
 {
     uint16_t cr1_cpy, cr1_mod;
     LL_GPIO_InitTypeDef init_struct_gpio;
+
+    if (h == NULL)
+    {
+        while (1)
+        {
+        }
+    }
 
     // First call, enable clocks, configure GPIO pins and set SPI defaults.
     if (!READ_BIT(spi_state, SPI_STATE_INITIALIZED))
@@ -121,7 +129,8 @@ uint32_t spi_config_update(struct spi_config *h)
     if (cr1_mod != cr1_cpy)
     {
         while (LL_SPI_IsActiveFlag_BSY(SPI_PERIPH))
-            ;
+        {
+        }
         LL_SPI_Disable(SPI_PERIPH);
         WRITE_REG(SPI_PERIPH->CR1, cr1_mod);
     }
@@ -132,6 +141,13 @@ uint32_t spi_config_update(struct spi_config *h)
 uint32_t spi_transceive(struct spi_config *h, const uint8_t *data_tx, uint8_t *data_rx, uint32_t n)
 {
     uint32_t data_tx_index, data_rx_index;
+
+    if ((h == NULL) || (data_tx == NULL) || (data_rx == NULL))
+    {
+        while (1)
+        {
+        }
+    }
 
     data_tx_index = 0;
     data_rx_index = 0;
@@ -145,6 +161,7 @@ uint32_t spi_transceive(struct spi_config *h, const uint8_t *data_tx, uint8_t *d
     }
 
     LL_SPI_Enable(SPI_PERIPH);
+
     while ((data_tx_index < n) || (data_rx_index < n))
     {
         if ((data_tx_index < n) && (LL_SPI_GetTxFIFOLevel(SPI_PERIPH) != LL_SPI_TX_FIFO_FULL))
@@ -159,10 +176,15 @@ uint32_t spi_transceive(struct spi_config *h, const uint8_t *data_tx, uint8_t *d
             data_rx_index++;
         }
     }
+
     while (LL_SPI_GetTxFIFOLevel(SPI2) != LL_SPI_TX_FIFO_EMPTY)
-        ;
+    {
+    }
+
     while (LL_SPI_IsActiveFlag_BSY(SPI2))
-        ;
+    {
+    }
+
     LL_SPI_Disable(SPI_PERIPH);
 
     return 0;
@@ -172,12 +194,20 @@ uint32_t spi_transmit(struct spi_config *h, const uint8_t *data_tx, uint32_t n)
 {
     uint32_t data_tx_index;
 
+    if ((h == NULL) || (data_tx == NULL))
+    {
+        while (1)
+        {
+        }
+    }
+
     data_tx_index = 0;
 
     spi_config_update(h);
 
     LL_SPI_Enable(SPI_PERIPH);
     system_time_wait_usec(1);
+
     while (data_tx_index < n)
     {
         if (LL_SPI_GetTxFIFOLevel(SPI_PERIPH) != LL_SPI_TX_FIFO_FULL)
@@ -186,10 +216,15 @@ uint32_t spi_transmit(struct spi_config *h, const uint8_t *data_tx, uint32_t n)
             data_tx_index++;
         }
     }
+
     while (LL_SPI_GetTxFIFOLevel(SPI2) != LL_SPI_TX_FIFO_EMPTY)
-        ;
+    {
+    }
+
     while (LL_SPI_IsActiveFlag_BSY(SPI2))
-        ;
+    {
+    }
+
     LL_SPI_Disable(SPI_PERIPH);
 
     return 0;
@@ -198,6 +233,13 @@ uint32_t spi_transmit(struct spi_config *h, const uint8_t *data_tx, uint32_t n)
 uint32_t spi_receive(struct spi_config *h, uint8_t *data_rx, uint32_t n)
 {
     uint32_t data_tx_index, data_rx_index;
+
+    if ((h == NULL) || (data_rx == NULL))
+    {
+        while (1)
+        {
+        }
+    }
 
     data_tx_index = 0;
     data_rx_index = 0;
@@ -225,10 +267,15 @@ uint32_t spi_receive(struct spi_config *h, uint8_t *data_rx, uint32_t n)
             data_rx_index++;
         }
     }
+
     while (LL_SPI_GetTxFIFOLevel(SPI2) != LL_SPI_TX_FIFO_EMPTY)
-        ;
+    {
+    }
+
     while (LL_SPI_IsActiveFlag_BSY(SPI2))
-        ;
+    {
+    }
+
     LL_SPI_Disable(SPI_PERIPH);
 
     return 0;

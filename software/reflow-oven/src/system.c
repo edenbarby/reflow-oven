@@ -3,6 +3,8 @@
 #include "stm32f3xx_ll_system.h"
 #include "system.h"
 
+static uint32_t system_pllclk;
+static uint32_t system_sysclk;
 static uint32_t system_hclk;
 static uint32_t system_pclk1;
 static uint32_t system_pclk2;
@@ -82,9 +84,21 @@ void system_clock_init_pll_hse_72(void)
     {
     }
 
+    system_pllclk = 72000000UL;
+    system_sysclk = 72000000UL;
     system_hclk = 72000000UL;
     system_pclk1 = 36000000UL;
     system_pclk2 = 72000000UL;
+}
+
+uint32_t system_clock_get_pllclk(void)
+{
+    return system_pllclk;
+}
+
+uint32_t system_clock_get_sysclk(void)
+{
+    return system_sysclk;
 }
 
 uint32_t system_clock_get_hclk(void)
@@ -138,13 +152,15 @@ void system_time_wait_usec(uint64_t usec)
     target_tick = system_time_get_tick() + system_tick_factor_usec * usec;
 
     while (target_tick > system_time_get_tick())
-        ;
+    {
+    }
 }
 
 void system_handler(void)
 {
     while (1)
-        ;
+    {
+    }
 }
 
 void HardFault_Handler(void)

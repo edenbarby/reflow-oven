@@ -1,54 +1,18 @@
+#include <string.h>
+
 #include "comms.h"
 #include "serial.h"
 #include "system.h"
 
 #define COMMS_TYPE_NACK 0
-#define COMMS_TYPE_CMD_WAIT 10
-#define COMMS_TYPE_CMD_RUN 11
-#define COMMS_TYPE_CMD_COOL 12
-#define COMMS_TYPE_QUERY_STATE 20
-#define COMMS_TYPE_QUERY_TPOVN 21
-#define COMMS_TYPE_QUERY_TPCPU 22
+#define COMMS_TYPE_CMD_IDLE 1
+#define COMMS_TYPE_CMD_RUN 2
+#define COMMS_TYPE_QUERY_ALL 3
 
-enum comms_state
-{
+static enum comms_state_e {
     COMMS_STATE_INIT,
     COMMS_STATE_RUN
-};
-
-static enum comms_state state = COMMS_STATE_INIT;
-
-uint8_t comms_reflow_length_check(uint32_t packet_len)
-{
-    /* There are two elements to check here; the first is to ensure that the
-    ** packet contains an integer number of reflow steps plus the type header
-    ** (i.e. 8n+1) and the second is to check that the number of steps is less
-    ** than REFLOW_PROFILE_STEPS_MAX (n < REFLOW_PROFILE_STEPS_MAX).
-    */
-    return ((packet_len - 1) % 8 == 0) && (((packet_len - 1) / 8) <= REFLOW_PROFILE_STEPS_MAX);
-}
-
-uint32_t comms_reflow_unpacker(uint8_t *packed, uint32_t packed_len, struct reflow_step *unpacked)
-{
-    uint32_t i;
-    union byte_float_converter byte2float;
-
-    for (i = 0; (8 * (i + 1) <= packed_len) && (i < REFLOW_PROFILE_STEPS_MAX); i++)
-    {
-        byte2float.b[0] = packed[8 * i];
-        byte2float.b[1] = packed[8 * i + 1];
-        byte2float.b[2] = packed[8 * i + 2];
-        byte2float.b[3] = packed[8 * i + 3];
-        unpacked[i].time = byte2float.f;
-        byte2float.b[0] = packed[8 * i + 4];
-        byte2float.b[1] = packed[8 * i + 5];
-        byte2float.b[2] = packed[8 * i + 6];
-        byte2float.b[3] = packed[8 * i + 7];
-        unpacked[i].temp = byte2float.f;
-    }
-
-    return i;
-}
+} state = COMMS_STATE_INIT;
 
 void comms_init(void)
 {
@@ -56,89 +20,44 @@ void comms_init(void)
     state = COMMS_STATE_RUN;
 }
 
-void comms_run(struct reflow_context *context)
+void comms_run(oven_context_t *context)
 {
+    uint32_t rx_len = 0;
     uint32_t tx_len = 0;
-    uint32_t rx_len;
-    uint8_t packet_buf[SERIAL_PACKET_MAX_LEN];
-    union byte_float_converter float2byte;
+    uint8_t packet_buf[SERIAL_PACKET_MAX_LEN] = {0};
 
     rx_len = serial_receive(packet_buf, SERIAL_PACKET_MAX_LEN);
-
     if (rx_len > 0)
     {
         switch (packet_buf[0])
         {
-        case COMMS_TYPE_CMD_WAIT:
+        case COMMS_TYPE_CMD_IDLE:
             if (rx_len == 1)
             {
-                context->state = REFLOW_STATE_WAIT;
+                context->state = OVEN_STATE_IDLE;
 
-                packet_buf[tx_len++] = COMMS_TYPE_CMD_WAIT;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
+                packet_buf[tx_len++] = COMMS_TYPE_CMD_IDLE;
+                memcpy(&packet_buf[tx_len], &context->errors, sizeof(uint16_t));
+                tx_len += sizeof(uint16_t);
             }
             break;
         case COMMS_TYPE_CMD_RUN:
-            if (comms_reflow_length_check(rx_len))
+            if (rx_len == (1 + sizeof(reflow_profile_t)))
             {
-                context->state = REFLOW_STATE_RUN;
-                context->profile.onset_us = system_time_get_usec();
-                context->profile.len = comms_reflow_unpacker(&packet_buf[1], rx_len - 1, context->profile.steps);
+                context->state = OVEN_STATE_SOAK_RAMP;
+                memcpy(&context->profile, &packet_buf[1], sizeof(reflow_profile_t));
 
                 packet_buf[tx_len++] = COMMS_TYPE_CMD_RUN;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
+                memcpy(&packet_buf[tx_len], &context->errors, sizeof(uint16_t));
+                tx_len += sizeof(uint16_t);
             }
             break;
-        case COMMS_TYPE_CMD_COOL:
+        case COMMS_TYPE_QUERY_ALL:
             if (rx_len == 1)
             {
-                context->state = REFLOW_STATE_COOL;
-
-                packet_buf[tx_len++] = COMMS_TYPE_CMD_COOL;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
-            }
-            break;
-        case COMMS_TYPE_QUERY_STATE:
-            if (rx_len == 1)
-            {
-                packet_buf[tx_len++] = COMMS_TYPE_QUERY_STATE;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
-                packet_buf[tx_len++] = context->state;
-            }
-            break;
-        case COMMS_TYPE_QUERY_TPOVN:
-            if (rx_len == 1)
-            {
-                packet_buf[tx_len++] = COMMS_TYPE_QUERY_TPOVN;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
-                float2byte.f = context->temp_oven;
-                packet_buf[tx_len++] = float2byte.b[0];
-                packet_buf[tx_len++] = float2byte.b[1];
-                packet_buf[tx_len++] = float2byte.b[2];
-                packet_buf[tx_len++] = float2byte.b[3];
-                float2byte.f = context->temp_ref;
-                packet_buf[tx_len++] = float2byte.b[0];
-                packet_buf[tx_len++] = float2byte.b[1];
-                packet_buf[tx_len++] = float2byte.b[2];
-                packet_buf[tx_len++] = float2byte.b[3];
-            }
-            break;
-        case COMMS_TYPE_QUERY_TPCPU:
-            if (rx_len == 1)
-            {
-                packet_buf[tx_len++] = COMMS_TYPE_QUERY_TPCPU;
-                packet_buf[tx_len++] = (uint8_t)(context->errors >> 8);
-                packet_buf[tx_len++] = (uint8_t)(context->errors);
-                float2byte.f = context->temp_cpu;
-                packet_buf[tx_len++] = float2byte.b[0];
-                packet_buf[tx_len++] = float2byte.b[1];
-                packet_buf[tx_len++] = float2byte.b[2];
-                packet_buf[tx_len++] = float2byte.b[3];
+                packet_buf[tx_len++] = COMMS_TYPE_QUERY_ALL;
+                memcpy(&packet_buf[tx_len], context, sizeof(oven_context_t));
+                tx_len += sizeof(oven_context_t);
             }
             break;
         }
@@ -155,12 +74,13 @@ void comms_run(struct reflow_context *context)
             ** wrong transmitting this packet.
             */
             while (1)
-                ;
+            {
+            }
         }
     }
 }
 
-void comms_task(struct reflow_context *context)
+void comms_task(oven_context_t *context)
 {
     switch (state)
     {

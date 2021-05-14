@@ -1,17 +1,10 @@
 #ifndef MAX31855_H
 #define MAX31855_H
 
-enum MAX31855_STATUS
-{
-    MAX31855_OK = 0x00,
-    MAX31855_ERROR_COMMS = 0x01,
-    MAX31855_FAULT = 0x02,
-    MAX31855_FAULT_OPEN = 0x03,
-    MAX31855_FAULT_SHORT_GND = 0x04,
-    MAX31855_FAULT_SHORT_VCC = 0x05
-};
+#include <stdint.h>
 
-void max31855_init(void);
-enum MAX31855_STATUS max31855_read(float *temp_tc, float *temp_ref);
+#include "util.h"
+
+void max31855_task(oven_context_t *context);
 
 #endif // MAX31855_H

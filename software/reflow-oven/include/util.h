@@ -40,54 +40,60 @@
 #define REFLOW_SAFE_MAX_TEMP_REF 60.0f // Based on maximum safe to touch temperature (according to a 3 second google search).
 #define REFLOW_SAFE_MAX_TEMP_CPU 60.0f
 #define REFLOW_SAFE_COOL_TEMP 60.0f
+#define REFLOW_PROFILE_STEPS_MIN 2
 #define REFLOW_PROFILE_STEPS_MAX 20
 #define REFLOW_PROFILE_TIME_MAX 3600.0f // 1 hour.
 #define REFLOW_PROFILE_TEMP_MIN 0.0f
 #define REFLOW_PROFILE_TEMP_MAX 260.0f
 
-/* Global States **************************************************************/
-#define REFLOW_STATE_WAIT 0
-#define REFLOW_STATE_RUN 1
-#define REFLOW_STATE_COOL 2
-
 /* Global Error Flags *********************************************************/
-#define ERROR_TC_COMMS 0x01
-#define ERROR_TC_FAULT 0x02
-#define ERROR_TC_OPEN 0x03
-#define ERROR_TC_SHORT_GND 0x04
-#define ERROR_TC_SHORT_VCC 0x05
+#define ERROR_TC_COM (1 << 0) // Thermocouple IC communications error.
+#define ERROR_TC_FLT (1 << 1) // Thermocouple unknown fault.
+#define ERROR_TC_OPN (1 << 2) // Thermocouple disconnected.
+#define ERROR_TC_GND (1 << 3) // Thermocouple shorted to ground.
+#define ERROR_TC_VCC (1 << 4) // Thermocouple shorted to VCC.
+#define ERROR_TP_OVN (1 << 5) // Oven temperature exceeded maximum.
+#define ERROR_TP_REF (1 << 6) // Thermocouple IC temperature exceeded maximum.
+
+/* Global States **************************************************************/
+#define OVEN_STATE_INIT 0
+#define OVEN_STATE_IDLE 1
+#define OVEN_STATE_SOAK_RAMP 2
+#define OVEN_STATE_SOAK 3
+#define OVEN_STATE_REFLOW_RAMP 4
+#define OVEN_STATE_REFLOW 5
 
 /* Global Data Types **********************************************************/
-union byte_float_converter
+typedef struct
 {
-    uint8_t b[4];
-    float f;
-};
+    float p;
+    float i;
+    float d;
+    float i_max;
+} pid_settings_t;
 
-struct reflow_step
+typedef struct
 {
-    float time;
-    float temp;
-};
+    float ramp_rate;
+    float soak_time;
+    float soak_temp;
+    float reflow_time;
+    float reflow_temp;
+    pid_settings_t controller_ramp;
+    pid_settings_t controller_fixed;
+} reflow_profile_t;
 
-struct reflow_profile
+typedef struct
 {
-    uint64_t onset_us;
-    uint8_t len;
-    struct reflow_step *steps;
-};
-
-struct reflow_context
-{
-    struct reflow_profile profile;
-    uint8_t state;
-    float temp_cpu;
+    uint32_t errors;
+    uint32_t state;
     float temp_oven;
     float temp_ref;
-    uint16_t errors;
-};
-
-/* Global Variables ***********************************************************/
-extern struct reflow_context reflow_oven_context_g;
+    float p_current;
+    float i_current;
+    float d_current;
+    float power_current;
+    reflow_profile_t profile;
+} oven_context_t;
 
 #endif // UTIL_H

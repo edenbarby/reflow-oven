@@ -3,6 +3,6 @@
 
 #include "util.h"
 
-void display_task(struct reflow_context *context);
+void display_task(oven_context_t *context);
 
 #endif // DISPLAY_H
